@@ -39,6 +39,7 @@
 const char *pr2_ent_data_ptr;
 vm_t *sv_vm = NULL;
 extern gameData_t gamedata;
+extern sizebuf_t *csqcmsgbuffer;
 
 static int PASSFLOAT(float f)
 {
@@ -61,6 +62,10 @@ typedef intptr_t (*ext_syscall_t)(intptr_t *arg);
 static intptr_t EXT_SetSendNeeded(intptr_t *args);
 #endif
 static intptr_t EXT_MapExtFieldPtr(intptr_t *args);
+#ifdef MVD_PEXT1_SPRAYS
+static intptr_t EXT_SprayClear(intptr_t *args);
+static intptr_t EXT_SprayClearAll(intptr_t *args);
+#endif
 static intptr_t EXT_SetExtFieldPtr(intptr_t *args);
 static intptr_t EXT_GetExtFieldPtr(intptr_t *args);
 struct
@@ -74,6 +79,10 @@ struct
 	{"GetExtFieldPtr",	EXT_GetExtFieldPtr},
 #ifdef FTE_PEXT_CSQC
 	{"setsendneeded",		EXT_SetSendNeeded},
+#endif
+#ifdef MVD_PEXT1_SPRAYS
+	{"sprayclear",		EXT_SprayClear},
+	{"sprayclearall",	EXT_SprayClearAll},
 #endif
 };
 ext_syscall_t ext_syscall_tbl[256];
@@ -167,7 +176,7 @@ void PR2_CheckEmptyString(char *s)
 		PR2_RunError("Bad string");
 }
 
-void PF2_precache_sound(char *s)
+intptr_t PF2_precache_sound(char *s)
 {
 	int i;
 
@@ -181,16 +190,17 @@ void PF2_precache_sound(char *s)
 		if (!sv.sound_precache[i])
 		{
 			sv.sound_precache[i] = s;
-			return;
+			return i;
 		}
 		if (!strcmp(sv.sound_precache[i], s))
-			return;
+			return i;
 	}
 
 	PR2_RunError ("PF_precache_sound: overflow");
+	return 0;
 }
 
-void PF2_precache_model(char *s)
+intptr_t PF2_precache_model(char *s)
 {
 	int 	i;
 
@@ -205,13 +215,14 @@ void PF2_precache_model(char *s)
 		if (!sv.model_precache[i])
 		{
 			sv.model_precache[i] = s;
-			return;
+			return i;
 		}
 		if (!strcmp(sv.model_precache[i], s))
-			return;
+			return i;
 	}
 
 	PR2_RunError ("PF_precache_model: overflow");
+	return 0;
 }
 
 intptr_t PF2_precache_vwep_model(char *s)
@@ -1219,9 +1230,7 @@ sizebuf_t *WriteDest2(int dest)
 		return &sv.multicast;
 
 	case MSG_CSQC:
-		// Should return a reference to the CSQC message buffer managed in sv_ents.c
-		PR2_RunError("PF_Write_*: MSG_CSQC not implemented yet.");
-		return NULL;
+		return csqcmsgbuffer;
 
 	default:
 		PR2_RunError ("WriteDest: bad destination");
@@ -2003,7 +2012,36 @@ intptr_t PF2_FS_GetFileList(char *path, char *ext,
 #ifdef FTE_PEXT_CSQC
 intptr_t EXT_SetSendNeeded(intptr_t *args)
 {
-	PR2_RunError("SetSendNeeded not implemented yet.");
+	unsigned int subject = args[1];
+	int fl = args[2];
+	unsigned int to = args[3];
+
+	if (!subject || subject >= MAX_EDICTS || !fl)
+		return 0;
+
+	if (!to)
+	{	//broadcast
+		for (to = 0; to < MAX_CLIENTS; to++)
+		{
+			if (svs.clients[to].state < cs_connected)
+				continue;
+
+			svs.clients[to].csqcentitysendflags[subject] |= fl;
+			svs.clients[to].csqcentityscope[subject] |= SCOPE_WANTUPDATE;
+		}
+	}
+
+	else
+	{
+		to--;
+		if (to >= MAX_CLIENTS)
+			;	//some kind of error.
+		else
+		{
+			svs.clients[to].csqcentitysendflags[subject] |= fl;
+			svs.clients[to].csqcentityscope[subject] |= SCOPE_WANTUPDATE;
+		}
+	}
 	return 0;
 }
 #endif
@@ -2093,7 +2131,7 @@ static intptr_t EXT_MapExtFieldPtr(intptr_t *args)
 		}
 		if (!strcmp(key, "SendEntity"))
 		{
-			return offsetof(ext_entvars_t, sendentity) | GetExtFieldCookie();
+			return offsetof(ext_entvars_t, SendEntity) | GetExtFieldCookie();
 		}
 		if (!strcmp(key, "pvsflags"))
 		{
@@ -2103,6 +2141,19 @@ static intptr_t EXT_MapExtFieldPtr(intptr_t *args)
 
 	return 0;
 }
+
+#ifdef MVD_PEXT1_SPRAYS
+static intptr_t EXT_SprayClear(intptr_t *args)
+{
+	return SV_SpraysClearOne(args[1], true);
+}
+
+static intptr_t EXT_SprayClearAll(intptr_t *args)
+{
+	SV_SpraysClearAll(true);
+	return 1;
+}
+#endif
 
 /*
   int trap_Map_Extension( const char* ext_name, int mapto)
@@ -2581,11 +2632,9 @@ intptr_t PR2_GameSystemCalls(intptr_t *args) {
 		ED_Free(VME(1));
 		return 0;
 	case G_PRECACHE_SOUND:
-		PF2_precache_sound(VMA(1));
-		return 0;
+		return PF2_precache_sound(VMA(1));
 	case G_PRECACHE_MODEL:
-		PF2_precache_model(VMA(1));
-		return 0;
+		return PF2_precache_model(VMA(1));
 	case G_LIGHTSTYLE:
 		PF2_lightstyle(args[1], VMA(2));
 		return 0;
