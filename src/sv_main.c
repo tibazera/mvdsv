@@ -3426,6 +3426,7 @@ void SV_InitLocal (void)
 	static cvar_t qwm_platform = { "qwm_platform", "" };
 	static cvar_t qwm_builddate = { "qwm_builddate", "" };
 	static cvar_t qwm_homepage = { "qwm_homepage", "" };
+	static cvar_t qwm_ezcsqc = { "qwm_ezcsqc", "" };
 
 	packet_t *packet_freeblock; // initialise delayed packet free block
 
@@ -3603,6 +3604,7 @@ void SV_InitLocal (void)
 	Cvar_Register(&qwm_platform);
 	Cvar_Register(&qwm_builddate);
 	Cvar_Register(&qwm_homepage);
+	Cvar_Register(&qwm_ezcsqc);
 
 	Cvar_Register(&sv_mod_extensions);
 
