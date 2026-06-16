@@ -391,6 +391,20 @@ static void Cmd_New_f (void)
 	}
 #endif
 
+#ifdef FTE_PEXT_CSQC
+	if (sv_client->fteprotocolextensions & FTE_PEXT_CSQC) {
+#ifdef MVD_PEXT1_EZCSQC
+		if (sv_client->mvdprotocolextensions1 & MVD_PEXT1_EZCSQC) {
+			SV_ClientPrintf(sv_client, 2, "\n\n&c0faEZCSQC ANTILAG ENABLED!&r\n");
+		}
+		else
+#endif
+		{
+			SV_ClientPrintf(sv_client, 2, "\n\nENABLING CSQC FOR YOU!\nYOU'RE WELCOME\n");
+		}
+		sv_client->csqcactive = true;
+	}
+#endif
 	//NOTE:  This doesn't go through ClientReliableWrite since it's before the user
 	//spawns.  These functions are written to not overflow
 	if (sv_client->num_backbuf)
@@ -4802,6 +4816,11 @@ void SV_ExecuteClientMessage (client_t *cl)
 #ifdef FTE_PEXT2_VOICECHAT
 		case clc_voicechat:
 			SV_VoiceReadPacket();
+			break;
+#endif
+#ifdef MVD_PEXT1_SIMPLEPROJECTILE
+		case clc_ackframe:
+			MSG_ReadLong();
 			break;
 #endif
 		}
