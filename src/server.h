@@ -374,6 +374,22 @@ typedef struct client_s
 	float           lastteleport_teleportyaw; // new yaw angle, post-teleport
 #endif
 
+#if defined(MVD_PEXT1_SIMPLEPROJECTILE) || defined(FTE_PEXT_CSQC)
+	// CSQC stuff, we don't have full CSQC yet but they are used for simpleprojectiles
+	int csqcactive;
+	int ezcsqc_ready;
+	int csqc_framenum;
+	int csqc_latestverified;
+	int csqcnumedicts;
+	unsigned char csqcentityscope[MAX_EDICTS];
+	unsigned int csqcentitysendflags[MAX_EDICTS];
+
+	#define NUM_CSQCENTITYDB_FRAMES		UPDATE_MASK//256
+	csqcentityframedb_t csqcentityframehistory[NUM_CSQCENTITYDB_FRAMES];
+	int csqcentityframehistory_next;
+	int csqcentityframe_lastreset;
+#endif
+
 #ifdef MVD_PEXT1_SERVERSIDEWEAPON
 	// server-side weapons extension
 	int             weaponswitch_sequence_set; // need to remember what packet current choices were sent in for forgetorder
