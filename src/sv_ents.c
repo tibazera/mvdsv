@@ -931,7 +931,7 @@ int SV_SimpleProjectileWriteFrame_CSQC(client_t *client, struct sizebuf_s *msg, 
 			 * list. Do not erase those pending updates just because the entity
 			 * is absent from this frame's visibility walk.
 			 */
-			if (ed->xv.SendEntity && (client->csqcentityscope[number] & SCOPE_WANTUPDATE))
+			if (ed->xv.sendentity && (client->csqcentityscope[number] & SCOPE_WANTUPDATE))
 				continue;
 
 			client->csqcentityscope[number] &= ~SCOPE_WANTSEND;
@@ -942,7 +942,7 @@ int SV_SimpleProjectileWriteFrame_CSQC(client_t *client, struct sizebuf_s *msg, 
 
 		ed = EDICT_NUM(number);//sv.edicts + number;
 		client->csqcentityscope[number] &= ~SCOPE_WANTSEND;
-		if (ed->xv.SendEntity)
+		if (ed->xv.sendentity)
 		{
 			client->csqcentityscope[number] |= SCOPE_WANTUPDATE;
 		}
@@ -959,7 +959,7 @@ int SV_SimpleProjectileWriteFrame_CSQC(client_t *client, struct sizebuf_s *msg, 
 	{
 		ed = EDICT_NUM(number);
 		/* Preserve explicitly scheduled SendEntity updates outside PVS. */
-		if (ed->xv.SendEntity && (client->csqcentityscope[number] & SCOPE_WANTUPDATE))
+		if (ed->xv.sendentity && (client->csqcentityscope[number] & SCOPE_WANTUPDATE))
 			continue;
 
 		client->csqcentityscope[number] &= ~SCOPE_WANTSEND;
@@ -1104,7 +1104,7 @@ int SV_SimpleProjectileWriteFrame_CSQC(client_t *client, struct sizebuf_s *msg, 
 
 int SV_PrepareEntity_CSQC(edict_t *ent, entity_state_t *cs, int enumber)
 {
-	if (ent->xv.SendEntity == 0)
+	if (ent->xv.sendentity == 0)
 		return false;
 
 	//for (i = 0; i < MAX_CLIENTS; i++)

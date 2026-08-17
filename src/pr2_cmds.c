@@ -2187,7 +2187,7 @@ static intptr_t EXT_MapExtFieldPtr(intptr_t *args)
 		}
 		if (!strcmp(key, "SendEntity"))
 		{
-			return offsetof(ext_entvars_t, SendEntity) | GetExtFieldCookie();
+			return offsetof(ext_entvars_t, sendentity) | GetExtFieldCookie();
 		}
 		if (!strcmp(key, "pvsflags"))
 		{

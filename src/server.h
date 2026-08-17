@@ -128,7 +128,9 @@ typedef struct
 
 	entity_state_t static_entities[MAX_STATIC_ENTITIES];
 	int            static_entity_count;
-#ifdef FTE_PEXT_CSQC
+#if defined(MVD_PEXT1_SIMPLEPROJECTILE) || defined(FTE_PEXT_CSQC)
+	sprojectile_state_t simple_projectiles[MAX_EDICTS];
+	unsigned short	csqcsendstates[MAX_EDICTS];
 	unsigned int	csqcchecksum;
 #endif
 } server_t;

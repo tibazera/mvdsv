@@ -68,6 +68,10 @@ typedef struct
 	float	alpha;			// 0 = opaque, 1 = opaque, 0 < x < 1 translucent
 	float	colourmod[3];	// r,g,b [0.0 .. 1.0], > 1 overbright
 #ifdef FTE_PEXT_CSQC
+
+/* FTE CSQC pvsflags value: always include the entity in the visibility walk. */
+#define PVSF_IGNOREPVS 3
+
 	int		sendentity;		// Trigger GAME_CSQCSEND indirection
 	float	pvsflags;		// CSQC pvsflags
 #endif
