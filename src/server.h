@@ -187,6 +187,22 @@ typedef struct
 #define MAX_WEAPONSWITCH_OPTIONS    10
 #endif
 
+#if defined(MVD_PEXT1_SIMPLEPROJECTILE) || defined(FTE_PEXT_CSQC)
+#define SCOPE_WANTREMOVE 1
+#define SCOPE_WANTUPDATE 2
+#define SCOPE_WANTSEND (SCOPE_WANTREMOVE | SCOPE_WANTUPDATE)
+#define SCOPE_EXISTED_ONCE 4
+#define SCOPE_ASSUMED_EXISTING 8
+#define NUM_CSQCENTITIES_PER_FRAME 256
+typedef struct csqcentityframedb_s
+{
+	int framenum;
+	int num;
+	unsigned short entno[NUM_CSQCENTITIES_PER_FRAME];
+	int sendflags[NUM_CSQCENTITIES_PER_FRAME];
+} csqcentityframedb_t;
+#endif
+
 typedef struct client_s
 {
 	sv_client_state_t	state;
@@ -346,10 +362,6 @@ typedef struct client_s
 		VT_PLAYERSLOT0
 		/*player0+...*/
 	} voice_target;
-#endif
-
-#ifdef FTE_PEXT_CSQC
-	qbool			csqcactive;
 #endif
 
 	//===== NETWORK ============
