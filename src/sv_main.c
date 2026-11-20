@@ -63,6 +63,9 @@ cvar_t	developer = {"developer", "0"};		// show extra messages
 cvar_t	version = {"version", "", CVAR_ROM};
 #endif
 
+// space separated IPs of trusted proxies (qwfwd mesh); a connected client
+// whose packets arrive from one of them with a new IP is migrated, see SV_ProxyMigrate()
+cvar_t	sv_proxy_migrate = {"sv_proxy_migrate", ""};
 cvar_t	timeout = {"timeout", "65"};		// seconds without any message
 cvar_t	zombietime = {"zombietime", "2"};	// seconds to sink messages
 // after disconnect
@@ -2966,6 +2969,63 @@ double SV_RestorePenaltyFilter (client_t *cl, filtertype_t type)
 
 /*
 =================
+SV_ProxyTrusted / SV_ProxyMigrate
+
+A qwfwd proxy can move a running session to another trusted proxy (backup
+route). The server then sees the same qport and sequence from a new IP.
+Only allowed when both the old and the new IP are listed in sv_proxy_migrate,
+exactly one client matches and the sequence continues the netchan.
+=================
+*/
+static qbool SV_ProxyTrusted (netadr_t adr)
+{
+	char list[1024], *tok;
+	netadr_t t;
+
+	if (!sv_proxy_migrate.string[0])
+		return false;
+	strlcpy(list, sv_proxy_migrate.string, sizeof(list));
+	for (tok = strtok(list, " ,"); tok; tok = strtok(NULL, " ,"))
+		if (NET_StringToAdr(tok, &t) && NET_CompareBaseAdr(t, adr))
+			return true;
+	return false;
+}
+
+static client_t *SV_ProxyMigrate (int qport, unsigned int sequence)
+{
+	client_t *cl, *match = NULL;
+	int i;
+
+	if (!SV_ProxyTrusted(net_from))
+		return NULL;
+
+	for (i = 0, cl = svs.clients; i < MAX_CLIENTS; i++, cl++)
+	{
+		if (cl->state == cs_free || cl->netchan.qport != qport)
+			continue;
+		if (!SV_ProxyTrusted(cl->netchan.remote_address))
+			continue;
+		if (match)
+			return NULL; // ambiguous, refuse
+		match = cl;
+	}
+	if (!match)
+		return NULL;
+
+	sequence &= ~(1u << 31);
+	if (sequence <= (unsigned)match->netchan.incoming_sequence
+		|| sequence > (unsigned)match->netchan.incoming_sequence + 1000)
+		return NULL;
+
+	// NET_AdrToString uses a static buffer, print in two calls
+	Con_Printf ("%s migrated %s", match->name, NET_AdrToString(match->netchan.remote_address));
+	Con_Printf (" -> %s\n", NET_AdrToString(net_from));
+	match->netchan.remote_address = net_from;
+	return match;
+}
+
+/*
+=================
 SV_ReadPackets
 =================
 */
@@ -2973,6 +3033,7 @@ static void SV_ReadPackets (void)
 {
 	client_t *cl;
 	int qport;
+	unsigned int sequence;
 	int i;
 
 	if (sv.state != ss_active)
@@ -3014,7 +3075,7 @@ static void SV_ReadPackets (void)
 		// read the qport out of the message so we can fix up
 		// stupid address translating routers
 		MSG_BeginReading ();
-		MSG_ReadLong (); // sequence number
+		sequence = MSG_ReadLong (); // sequence number
 		MSG_ReadLong (); // sequence number
 		qport = MSG_ReadShort () & 0xffff;
 
@@ -3036,7 +3097,7 @@ static void SV_ReadPackets (void)
 			break;
 		}
 
-		if (i == MAX_CLIENTS)
+		if (i == MAX_CLIENTS && !(cl = SV_ProxyMigrate(qport, sequence)))
 			continue;
 
 		// ok, we know who sent this packet, but do we need to delay executing it?
@@ -3508,6 +3569,7 @@ void SV_InitLocal (void)
 	Cvar_Register (&serverdemo);
 	Cvar_Register (&sv_paused);
 
+	Cvar_Register (&sv_proxy_migrate);
 	Cvar_Register (&timeout);
 	Cvar_Register (&zombietime);
 
